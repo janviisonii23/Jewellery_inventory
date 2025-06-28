@@ -19,7 +19,7 @@ export function GoldPriceCard() {
       } catch (error) {
         console.error("Failed to fetch gold price:", error)
         // Fallback to mock price
-        setPrice(6245.75)
+        setPrice(98265.00)
         setLoading(false)
       }
     }

@@ -1,42 +1,58 @@
-"use client"
+"use client";
 
-import { useState, useEffect } from "react"
-import { useParams } from "next/navigation"
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
-import { Button } from "@/components/ui/button"
-import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table"
-import { ArrowLeft, Download } from "lucide-react"
-import Link from "next/link"
-import { Badge } from "@/components/ui/badge"
-import { fetchMerchantDetails } from "@/lib/api"
+import { useState, useEffect } from "react";
+import { useParams } from "next/navigation";
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
+import { Button } from "@/components/ui/button";
+import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
+import { ArrowLeft, Download, Plus } from "lucide-react";
+import Link from "next/link";
+import { Badge } from "@/components/ui/badge";
+
+interface Merchant {
+  merchantCode: string;
+  name: string;
+  phone: string;
+  createdAt: string;
+  totalOrnaments: number;
+  inStock: number;
+  sold: number;
+  totalValue: number;
+  ornaments: {
+    ornamentId: string;
+    type: string;
+    weight: number;
+    purity: string;
+    costPrice: number;
+    isSold: boolean;
+  }[];
+}
 
 export default function MerchantDetailPage() {
-  const params = useParams()
-  const merchantId = params.id as string
-  const [merchant, setMerchant] = useState<any>(null)
-  const [loading, setLoading] = useState(true)
+  const params = useParams();
+  const merchantCode = params.merchantCode as string;
+  const [merchant, setMerchant] = useState<Merchant | null>(null);
+  const [loading, setLoading] = useState(true);
 
   useEffect(() => {
     const loadMerchantDetails = async () => {
       try {
-        const data = await fetchMerchantDetails(merchantId)
-        setMerchant(data)
-        setLoading(false)
+        setLoading(true);
+        const response = await fetch(`/api/merchants/${merchantCode}`);
+        if (!response.ok) throw new Error("Failed to load merchant details");
+        const data = await response.json();
+        setMerchant(data);
       } catch (error) {
-        console.error("Failed to load merchant details:", error)
-        setLoading(false)
+        console.error("Failed to load merchant details:", error);
+      } finally {
+        setLoading(false);
       }
-    }
-
-    loadMerchantDetails()
-  }, [merchantId])
+    };
+    loadMerchantDetails();
+  }, [merchantCode]);
 
   if (loading) {
-    return (
-      <div className="flex items-center justify-center h-full">
-        <p>Loading merchant details...</p>
-      </div>
-    )
+    return <div className="flex items-center justify-center h-full"><p>Loading merchant details...</p></div>;
   }
 
   if (!merchant) {
@@ -50,7 +66,7 @@ export default function MerchantDetailPage() {
           </Link>
         </Button>
       </div>
-    )
+    );
   }
 
   return (
@@ -78,15 +94,15 @@ export default function MerchantDetailPage() {
               </div>
               <div>
                 <dt className="text-sm text-muted-foreground">Merchant Code</dt>
-                <dd className="font-mono">{merchant.merchantCode}</dd>
+                <dd>{merchant.merchantCode}</dd>
               </div>
               <div>
                 <dt className="text-sm text-muted-foreground">Phone</dt>
-                <dd>{merchant.phone || "Not provided"}</dd>
+                <dd>{merchant.phone}</dd>
               </div>
               <div>
                 <dt className="text-sm text-muted-foreground">Registered Since</dt>
-                <dd>{merchant.createdAt}</dd>
+                <dd>{merchant.createdAt.split('T')[0]}</dd>
               </div>
             </dl>
           </CardContent>
@@ -124,11 +140,14 @@ export default function MerchantDetailPage() {
           </CardHeader>
           <CardContent className="space-y-2">
             <Button className="w-full" asChild>
-              <Link href={`/add-ornament?merchant=${merchant.merchantCode}`}>Add Ornament</Link>
+              <Link href={`/inventory/add?merchant=${merchant.merchantCode}`}>
+                <Plus className="mr-2 h-4 w-4" />
+                Add Product
+              </Link>
             </Button>
             <Button variant="outline" className="w-full">
               <Download className="mr-2 h-4 w-4" />
-              Export Inventory
+              Export Products
             </Button>
           </CardContent>
         </Card>
@@ -159,21 +178,16 @@ export default function MerchantDetailPage() {
                   </TableCell>
                 </TableRow>
               ) : (
-                merchant.ornaments.map((ornament: any) => (
-                  <TableRow key={ornament.ornamentId}>
-                    <TableCell className="font-medium">{ornament.ornamentId}</TableCell>
-                    <TableCell>{ornament.type}</TableCell>
-                    <TableCell>{ornament.weight}g</TableCell>
-                    <TableCell>{ornament.purity}</TableCell>
-                    <TableCell>₹{ornament.costPrice.toLocaleString()}</TableCell>
+                merchant.ornaments.map((o) => (
+                  <TableRow key={o.ornamentId}>
+                    <TableCell className="font-medium">{o.ornamentId}</TableCell>
+                    <TableCell>{o.type}</TableCell>
+                    <TableCell>{o.weight}g</TableCell>
+                    <TableCell>{o.purity}</TableCell>
+                    <TableCell>₹{o.costPrice.toLocaleString()}</TableCell>
                     <TableCell>
-                      <Badge
-                        variant={ornament.status === "in_stock" ? "default" : "secondary"}
-                        className={
-                          ornament.status === "in_stock" ? "bg-green-100 text-green-800" : "bg-gray-100 text-gray-800"
-                        }
-                      >
-                        {ornament.status === "in_stock" ? "In Stock" : "Sold"}
+                      <Badge variant={o.isSold ? "destructive" : "default"}>
+                        {o.isSold ? "Sold" : "In Stock"}
                       </Badge>
                     </TableCell>
                   </TableRow>
@@ -184,5 +198,5 @@ export default function MerchantDetailPage() {
         </CardContent>
       </Card>
     </div>
-  )
-}
+  );
+} 

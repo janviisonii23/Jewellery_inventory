@@ -7,22 +7,43 @@ import { Button } from "@/components/ui/button"
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table"
 import { ArrowLeft, Download } from "lucide-react"
 import Link from "next/link"
-import { fetchClientDetails } from "@/lib/api"
+
+interface Client {
+  id: number
+  name: string
+  phone: string
+  email: string | null
+  totalPurchases: number
+  totalSpent: number
+  lastPurchase: string
+  purchases: {
+    billId: string
+    date: string
+    items: number
+    amount: number
+    paymentMethod: string
+  }[]
+}
 
 export default function ClientDetailPage() {
   const params = useParams()
   const clientId = params.id as string
-  const [client, setClient] = useState<any>(null)
+  const [client, setClient] = useState<Client | null>(null)
   const [loading, setLoading] = useState(true)
 
   useEffect(() => {
     const loadClientDetails = async () => {
       try {
-        const data = await fetchClientDetails(clientId)
+        setLoading(true)
+        const response = await fetch(`/api/clients/${clientId}`)
+        if (!response.ok) {
+          throw new Error("Failed to load client details")
+        }
+        const data = await response.json()
         setClient(data)
-        setLoading(false)
       } catch (error) {
         console.error("Failed to load client details:", error)
+      } finally {
         setLoading(false)
       }
     }
@@ -85,7 +106,7 @@ export default function ClientDetailPage() {
               </div>
               <div>
                 <dt className="text-sm text-muted-foreground">Client Since</dt>
-                <dd>{client.createdAt}</dd>
+                <dd>{client.purchases[0]?.date || "No purchases yet"}</dd>
               </div>
             </dl>
           </CardContent>
@@ -153,7 +174,7 @@ export default function ClientDetailPage() {
                   </TableCell>
                 </TableRow>
               ) : (
-                client.purchases.map((purchase: any) => (
+                client.purchases.map((purchase) => (
                   <TableRow key={purchase.billId}>
                     <TableCell className="font-medium">{purchase.billId}</TableCell>
                     <TableCell>{purchase.date}</TableCell>

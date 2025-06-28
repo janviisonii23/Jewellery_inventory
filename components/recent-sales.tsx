@@ -8,10 +8,10 @@ import { fetchRecentSales } from "@/lib/api"
 const fallbackSales = [
   {
     id: 1,
-    client: "Priya Sharma",
-    email: "priya@example.com",
+    client: "Janvi",
+    email: "janvi@123.com",
     amount: "₹42,500",
-    date: "2 hours ago",
+    date: "1 day ago",
     items: 3,
     initials: "PS",
   },

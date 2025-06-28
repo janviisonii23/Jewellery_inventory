@@ -166,121 +166,44 @@ export async function addOrnament(ornamentData: any) {
 // Fetch stock data
 export async function fetchStock(filters: any) {
   try {
-    // In a real app, this would fetch from the backend with filters
-    // const queryParams = new URLSearchParams()
-    // if (filters.type) queryParams.append('type', filters.type)
-    // if (filters.status) queryParams.append('status', filters.status)
-    // if (filters.merchant) queryParams.append('merchant', filters.merchant)
-    // if (filters.purity) queryParams.append('purity', filters.purity)
-    // if (filters.search) queryParams.append('search', filters.search)
+    const queryParams = new URLSearchParams();
+    if (filters.type) queryParams.append('type', filters.type);
+    if (filters.status) queryParams.append('status', filters.status);
+    if (filters.merchant) queryParams.append('merchant', filters.merchant);
+    if (filters.purity) queryParams.append('purity', filters.purity);
+    if (filters.search) queryParams.append('search', filters.search);
 
-    // const response = await fetch(`/api/stock?${queryParams.toString()}`)
-    // const data = await response.json()
-    // return data
-
-    // Mock data for now
-    const mockData = [
-      {
-        id: 1,
-        ornamentId: "R001",
-        name: "Gold Ring with Diamond",
-        type: "ring",
-        weight: 8.5,
-        costPrice: 42500,
-        merchant: "MER001",
-        merchantName: "Rajesh Jewelers",
-        status: "in_stock",
-        purity: "22K",
-        addedDate: "2023-10-15",
-      },
-      {
-        id: 2,
-        ornamentId: "N001",
-        name: "Gold Necklace with Pendant",
-        type: "necklace",
-        weight: 15.2,
-        costPrice: 76000,
-        merchant: "MER002",
-        merchantName: "Golden Creations",
-        status: "in_stock",
-        purity: "24K",
-        addedDate: "2023-11-02",
-      },
-      {
-        id: 3,
-        ornamentId: "E001",
-        name: "Gold Earrings",
-        type: "earring",
-        weight: 4.8,
-        costPrice: 24000,
-        merchant: "MER003",
-        merchantName: "Sharma & Sons",
-        status: "sold",
-        purity: "18K",
-        addedDate: "2023-09-28",
-      },
-    ];
-
-    // Apply filters
-    return mockData.filter((item) => {
-      let match = true;
-
-      if (filters.type && item.type !== filters.type) match = false;
-      if (filters.status && item.status !== filters.status) match = false;
-      if (filters.merchant && item.merchantName !== filters.merchant)
-        match = false;
-      if (filters.purity && item.purity !== filters.purity) match = false;
-      if (filters.search) {
-        const searchLower = filters.search.toLowerCase();
-        const matchesSearch =
-          item.ornamentId.toLowerCase().includes(searchLower) ||
-          item.merchant.toLowerCase().includes(searchLower);
-        if (!matchesSearch) match = false;
-      }
-
-      return match;
-    });
+    const response = await fetch(`/api/stock?${queryParams.toString()}`);
+    if (!response.ok) {
+      throw new Error('Failed to fetch stock data');
+    }
+    
+    const data = await response.json();
+    return data;
   } catch (error) {
     console.error("API Error:", error);
-    throw error;
+    return []; // Return empty array on error to prevent UI from breaking
   }
 }
 
-// Scan QR code
+// Scan QR code and get item details
 export async function scanQrCode(qrData: string) {
   try {
-    // In a real app, this would send to the backend
-    // const response = await fetch('/api/scan-qr', {
-    //   method: 'POST',
-    //   headers: {
-    //     'Content-Type': 'application/json',
-    //   },
-    //   body: JSON.stringify({ qrData }),
-    // })
-    // const data = await response.json()
-    // return data
+    const response = await fetch('/api/scan-item', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify({ qrData }),
+    });
 
-    // Mock response for now
-    // Try to parse the QR data if it's JSON
-    let parsedData;
-    try {
-      parsedData = JSON.parse(qrData);
-    } catch (e) {
-      // If not JSON, assume it's an ornament ID
-      parsedData = { ornamentId: qrData };
+    if (!response.ok) {
+      const error = await response.json();
+      throw new Error(error.error || 'Failed to scan QR code');
     }
 
-    // Mock item data
-    return {
-      success: true,
-      item: {
-        ornamentId: parsedData.ornamentId || "R001",
-        type: parsedData.type || "ring",
-        weight: parsedData.weight || 8.5,
-        purity: parsedData.purity || "22K",
-        sellingPrice: 45000,
-      },
-    };
+    const data = await response.json();
+    return data;
   } catch (error) {
     console.error("API Error:", error);
     throw error;
@@ -288,24 +211,34 @@ export async function scanQrCode(qrData: string) {
 }
 
 // Generate bill
-export async function generateBill(billData: any) {
+export async function generateBill(billData: {
+  clientName: string;
+  clientPhone: string;
+  items: Array<{
+    ornamentId: string;
+    sellingPrice: number;
+  }>;
+  subtotal: number;
+  tax: number;
+  total: number;
+  paymentMethod: string;
+}) {
   try {
-    // In a real app, this would send to the backend
-    // const response = await fetch('/api/generate-bill', {
-    //   method: 'POST',
-    //   headers: {
-    //     'Content-Type': 'application/json',
-    //   },
-    //   body: JSON.stringify(billData),
-    // })
-    // const data = await response.json()
-    // return data
+    const response = await fetch('/api/generate-bill', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify(billData),
+    });
 
-    // Mock response for now
-    return {
-      success: true,
-      billId: `BILL${Math.floor(1000 + Math.random() * 9000)}`,
-    };
+    if (!response.ok) {
+      const error = await response.json();
+      throw new Error(error.error || 'Failed to generate bill');
+    }
+
+    const data = await response.json();
+    return data;
   } catch (error) {
     console.error("API Error:", error);
     throw error;
@@ -313,69 +246,25 @@ export async function generateBill(billData: any) {
 }
 
 // Fetch sales history
-export async function fetchSalesHistory(filters: any) {
+export async function fetchSalesHistory(filters: {
+  date?: string;
+  paymentMethod?: string;
+  search?: string;
+}) {
   try {
-    // In a real app, this would fetch from the backend with filters
-    // const queryParams = new URLSearchParams()
-    // if (filters.date) queryParams.append('date', filters.date)
-    // if (filters.paymentMethod) queryParams.append('paymentMethod', filters.paymentMethod)
-    // if (filters.search) queryParams.append('search', filters.search)
+    const queryParams = new URLSearchParams();
+    if (filters.date) queryParams.append('date', filters.date);
+    if (filters.paymentMethod) queryParams.append('paymentMethod', filters.paymentMethod);
+    if (filters.search) queryParams.append('search', filters.search);
 
-    // const response = await fetch(`/api/sales?${queryParams.toString()}`)
-    // const data = await response.json()
-    // return data
+    const response = await fetch(`/api/sales?${queryParams.toString()}`);
+    if (!response.ok) {
+      const error = await response.json();
+      throw new Error(error.error || 'Failed to fetch sales history');
+    }
 
-    // Mock data for now
-    const mockData = [
-      {
-        id: 1,
-        billId: "BILL001",
-        clientName: "Priya Sharma",
-        clientPhone: "9876543210",
-        date: "2023-04-15",
-        items: 3,
-        total: 42500,
-        paymentMethod: "cash",
-      },
-      {
-        id: 2,
-        billId: "BILL002",
-        clientName: "Rahul Patel",
-        clientPhone: "8765432109",
-        date: "2023-04-14",
-        items: 1,
-        total: 18950,
-        paymentMethod: "card",
-      },
-      {
-        id: 3,
-        billId: "BILL003",
-        clientName: "Ananya Singh",
-        clientPhone: "7654321098",
-        date: "2023-04-13",
-        items: 4,
-        total: 56200,
-        paymentMethod: "upi",
-      },
-    ];
-
-    // Apply filters
-    return mockData.filter((item) => {
-      let match = true;
-
-      if (filters.date && item.date !== filters.date) match = false;
-      if (filters.paymentMethod && item.paymentMethod !== filters.paymentMethod)
-        match = false;
-      if (filters.search) {
-        const searchLower = filters.search.toLowerCase();
-        const matchesSearch =
-          item.billId.toLowerCase().includes(searchLower) ||
-          item.clientName.toLowerCase().includes(searchLower);
-        if (!matchesSearch) match = false;
-      }
-
-      return match;
-    });
+    const data = await response.json();
+    return data;
   } catch (error) {
     console.error("API Error:", error);
     throw error;
@@ -515,83 +404,51 @@ export async function fetchClientDetails(clientId: string) {
 // Fetch merchants
 export async function fetchMerchants(searchTerm = "") {
   try {
-    // In a real app, this would fetch from the backend
-    // const response = await fetch(`/api/merchants?search=${encodeURIComponent(searchTerm)}`)
-    // const data = await response.json()
-    // return data
-
-    // Mock data for now
-    const mockData = [
-      {
-        id: 1,
-        name: "Rajesh Jewelers",
-        merchantCode: "MER001",
-        phone: "9876543210",
-        totalOrnaments: 45,
-        totalValue: 450000,
-        createdAt: "2023-01-10",
-      },
-      {
-        id: 2,
-        name: "Golden Creations",
-        merchantCode: "MER002",
-        phone: "8765432109",
-        totalOrnaments: 32,
-        totalValue: 320000,
-        createdAt: "2023-02-15",
-      },
-      {
-        id: 3,
-        name: "Sharma & Sons",
-        merchantCode: "MER003",
-        phone: "7654321098",
-        totalOrnaments: 28,
-        totalValue: 280000,
-        createdAt: "2023-03-20",
-      },
-    ];
-
-    // Apply search filter
-    if (searchTerm) {
-      const searchLower = searchTerm.toLowerCase();
-      return mockData.filter(
-        (merchant) =>
-          merchant.name.toLowerCase().includes(searchLower) ||
-          merchant.merchantCode.toLowerCase().includes(searchLower) ||
-          merchant.phone.includes(searchTerm)
-      );
+    console.log('Fetching merchants with search term:', searchTerm);
+    const response = await fetch(`/api/merchants?search=${encodeURIComponent(searchTerm)}`);
+    console.log('Response status:', response.status);
+    
+    if (!response.ok) {
+      const errorText = await response.text();
+      console.error('Error response:', errorText);
+      throw new Error(`Failed to fetch merchants: ${response.status} ${errorText}`);
     }
-
-    return mockData;
+    
+    const data = await response.json();
+    console.log('Received merchants:', data);
+    
+    // Transform the data to match the expected format
+    return data.map((merchant: any) => ({
+      id: merchant.id,
+      name: merchant.name,
+      merchantCode: merchant.merchantCode,
+      phone: merchant.phone,
+      totalOrnaments: merchant.totalOrnaments || 0,
+      totalValue: merchant.totalValue || 0,
+      createdAt: merchant.createdAt
+    }));
   } catch (error) {
     console.error("API Error:", error);
-    throw error;
+    // Return empty array on error to prevent UI from breaking
+    return [];
   }
 }
 
 // Add merchant
-export async function addMerchant(merchantData: any) {
-  try {
-    // In a real app, this would send to the backend
-    // const response = await fetch('/api/merchants', {
-    //   method: 'POST',
-    //   headers: {
-    //     'Content-Type': 'application/json',
-    //   },
-    //   body: JSON.stringify(merchantData),
-    // })
-    // const data = await response.json()
-    // return data
+export async function addMerchant(merchant: {
+  merchantCode: string;
+  name: string;
+  phone: string;
+}) {
+  const res = await fetch("/api/merchants", {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify(merchant),
+  });
 
-    // Mock response for now
-    return {
-      success: true,
-      merchantId: Math.floor(1000 + Math.random() * 9000),
-    };
-  } catch (error) {
-    console.error("API Error:", error);
-    throw error;
-  }
+  const data = await res.json();
+  if (!res.ok) throw new Error(data.error || "Failed to add merchant");
+  return data.merchant;
 }
 
 // Fetch merchant details

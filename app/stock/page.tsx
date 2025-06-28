@@ -1,15 +1,33 @@
-"use client"
+"use client";
 
-import { useState, useEffect } from "react"
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
-import { Button } from "@/components/ui/button"
-import { Input } from "@/components/ui/input"
-import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table"
-import { Badge } from "@/components/ui/badge"
-import { Select, SelectContent, SelectItem, SelectTrigger } from "@/components/ui/select"
-import { Download, Filter, PlusCircle, Search } from "lucide-react"
-import Link from "next/link"
-import { fetchStock } from "@/lib/api"
+import { useState, useEffect } from "react";
+import {
+  Card,
+  CardContent,
+  CardDescription,
+  CardHeader,
+  CardTitle,
+} from "@/components/ui/card";
+import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
+import {
+  Table,
+  TableBody,
+  TableCell,
+  TableHead,
+  TableHeader,
+  TableRow,
+} from "@/components/ui/table";
+import { Badge } from "@/components/ui/badge";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+} from "@/components/ui/select";
+import { Download, Filter, PlusCircle, Search } from "lucide-react";
+import Link from "next/link";
+import { fetchStock } from "@/lib/api";
 
 // Fallback data in case API fails
 const fallbackData = [
@@ -52,16 +70,30 @@ const fallbackData = [
     purity: "18K",
     addedDate: "2023-09-28",
   },
-]
+];
+
+interface StockItem {
+  id: number;
+  ornamentId: string;
+  name?: string;
+  type: string;
+  weight: number;
+  costPrice: number;
+  merchant: string;
+  merchantName: string;
+  status: 'in_stock' | 'sold';
+  purity: string;
+  addedDate: string;
+}
 
 export default function StockPage() {
-  const [searchTerm, setSearchTerm] = useState("")
-  const [typeFilter, setTypeFilter] = useState("all")
-  const [statusFilter, setStatusFilter] = useState("all")
-  const [merchantFilter, setMerchantFilter] = useState("all")
-  const [purityFilter, setPurityFilter] = useState("all")
-  const [stockData, setStockData] = useState(fallbackData)
-  const [loading, setLoading] = useState(true)
+  const [searchTerm, setSearchTerm] = useState("");
+  const [typeFilter, setTypeFilter] = useState("all");
+  const [statusFilter, setStatusFilter] = useState("all");
+  const [merchantFilter, setMerchantFilter] = useState("all");
+  const [purityFilter, setPurityFilter] = useState("all");
+  const [stockData, setStockData] = useState<StockItem[]>([]);
+  const [loading, setLoading] = useState(true);
 
   useEffect(() => {
     const loadStockData = async () => {
@@ -72,26 +104,32 @@ export default function StockPage() {
           merchant: merchantFilter !== "all" ? merchantFilter : undefined,
           purity: purityFilter !== "all" ? purityFilter : undefined,
           search: searchTerm || undefined,
-        })
+        });
 
-        if (data && data.length > 0) {
-          setStockData(data)
-        }
-        setLoading(false)
+        setStockData(data);
+        setLoading(false);
       } catch (error) {
-        console.error("Failed to load stock data:", error)
-        setLoading(false)
+        console.error("Failed to load stock data:", error);
+        setLoading(false);
       }
-    }
+    };
 
-    loadStockData()
-  }, [typeFilter, statusFilter, merchantFilter, purityFilter, searchTerm])
+    loadStockData();
+  }, [typeFilter, statusFilter, merchantFilter, purityFilter, searchTerm]);
 
   // Get unique merchants for filter
-  const merchants = Array.from(new Set(stockData.map((item) => item.merchantName)))
+  const merchants = Array.from(
+    new Set(stockData.map(item => item.merchant))
+  ).map(merchantCode => {
+    const item = stockData.find(i => i.merchant === merchantCode);
+    return {
+      code: merchantCode,
+      name: item?.merchantName || merchantCode
+    };
+  });
 
   // Filter inventory based on search and filters
-  const filteredInventory = stockData
+  const filteredInventory = stockData;
 
   return (
     <div>
@@ -136,7 +174,10 @@ export default function StockPage() {
                 <SelectTrigger>
                   <Filter className="mr-2 h-4 w-4" />
                   <span>
-                    {typeFilter === "all" ? "All Types" : typeFilter.charAt(0).toUpperCase() + typeFilter.slice(1)}
+                    {typeFilter === "all"
+                      ? "All Types"
+                      : typeFilter.charAt(0).toUpperCase() +
+                        typeFilter.slice(1)}
                   </span>
                 </SelectTrigger>
                 <SelectContent>
@@ -155,7 +196,11 @@ export default function StockPage() {
                 <SelectTrigger>
                   <Filter className="mr-2 h-4 w-4" />
                   <span>
-                    {statusFilter === "all" ? "All Status" : statusFilter === "in_stock" ? "In Stock" : "Sold"}
+                    {statusFilter === "all"
+                      ? "All Status"
+                      : statusFilter === "in_stock"
+                      ? "In Stock"
+                      : "Sold"}
                   </span>
                 </SelectTrigger>
                 <SelectContent>
@@ -170,13 +215,17 @@ export default function StockPage() {
               <Select value={merchantFilter} onValueChange={setMerchantFilter}>
                 <SelectTrigger>
                   <Filter className="mr-2 h-4 w-4" />
-                  <span>{merchantFilter === "all" ? "All Merchants" : merchantFilter}</span>
+                  <span>
+                    {merchantFilter === "all"
+                      ? "All Merchants"
+                      : merchants.find(m => m.code === merchantFilter)?.name || merchantFilter}
+                  </span>
                 </SelectTrigger>
                 <SelectContent>
                   <SelectItem value="all">All Merchants</SelectItem>
                   {merchants.map((merchant) => (
-                    <SelectItem key={merchant} value={merchant}>
-                      {merchant}
+                    <SelectItem key={merchant.code} value={merchant.code}>
+                      {merchant.name}
                     </SelectItem>
                   ))}
                 </SelectContent>
@@ -187,7 +236,9 @@ export default function StockPage() {
               <Select value={purityFilter} onValueChange={setPurityFilter}>
                 <SelectTrigger>
                   <Filter className="mr-2 h-4 w-4" />
-                  <span>{purityFilter === "all" ? "All Purity" : purityFilter}</span>
+                  <span>
+                    {purityFilter === "all" ? "All Purity" : purityFilter}
+                  </span>
                 </SelectTrigger>
                 <SelectContent>
                   <SelectItem value="all">All Purity</SelectItem>
@@ -204,7 +255,11 @@ export default function StockPage() {
       <Card>
         <CardHeader>
           <CardTitle>Ornaments</CardTitle>
-          <CardDescription>{loading ? "Loading..." : `Showing ${filteredInventory.length} items`}</CardDescription>
+          <CardDescription>
+            {loading
+              ? "Loading..."
+              : `Showing ${filteredInventory.length} items`}
+          </CardDescription>
         </CardHeader>
         <CardContent>
           <Table>
@@ -229,14 +284,19 @@ export default function StockPage() {
                 </TableRow>
               ) : filteredInventory.length === 0 ? (
                 <TableRow>
-                  <TableCell colSpan={8} className="text-center text-muted-foreground py-6">
+                  <TableCell
+                    colSpan={8}
+                    className="text-center text-muted-foreground py-6"
+                  >
                     No items found matching your filters.
                   </TableCell>
                 </TableRow>
               ) : (
                 filteredInventory.map((item) => (
                   <TableRow key={item.id}>
-                    <TableCell className="font-medium">{item.ornamentId}</TableCell>
+                    <TableCell className="font-medium">
+                      {item.ornamentId}
+                    </TableCell>
                     <TableCell>{item.type}</TableCell>
                     <TableCell>{item.weight}g</TableCell>
                     <TableCell>₹{item.costPrice.toLocaleString()}</TableCell>
@@ -244,9 +304,13 @@ export default function StockPage() {
                     <TableCell>{item.purity}</TableCell>
                     <TableCell>
                       <Badge
-                        variant={item.status === "in_stock" ? "default" : "secondary"}
+                        variant={
+                          item.status === "in_stock" ? "default" : "secondary"
+                        }
                         className={
-                          item.status === "in_stock" ? "bg-green-100 text-green-800" : "bg-gray-100 text-gray-800"
+                          item.status === "in_stock"
+                            ? "bg-green-100 text-green-800"
+                            : "bg-gray-100 text-gray-800"
                         }
                       >
                         {item.status === "in_stock" ? "In Stock" : "Sold"}
@@ -261,5 +325,5 @@ export default function StockPage() {
         </CardContent>
       </Card>
     </div>
-  )
+  );
 }

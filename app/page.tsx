@@ -1,9 +1,77 @@
+"use client"
+
+import { useEffect, useState } from "react"
+import { StatsCard } from "@/components/dashboard/stats-card"
+import { GoldPriceCard } from "@/components/gold-price-card"
+import {
+  IndianRupee,
+  Package,
+  ShoppingBag,
+  Users,
+  Gem,
+  QrCode,
+} from "lucide-react"
+import {
+  Table,
+  TableBody,
+  TableCell,
+  TableHead,
+  TableHeader,
+  TableRow,
+} from "@/components/ui/table"
 import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
-import { Gem, QrCode, ShoppingBag, Users } from "lucide-react"
 import Link from "next/link"
 
+interface DashboardData {
+  revenue: {
+    total: number
+    salesCount: number
+  }
+  inventory: {
+    totalValue: number
+    itemsInStock: number
+  }
+  recentSales: {
+    id: string
+    amount: number
+    date: string
+    merchant: string
+    items: number
+  }[]
+  topMerchants: {
+    id: string
+    name: string
+    totalSales: number
+    revenue: number
+  }[]
+  inventorySummary: {
+    category: string
+    count: number
+    value: number
+  }[]
+}
+
 export default function Home() {
+  const [data, setData] = useState<DashboardData | null>(null)
+  const [loading, setLoading] = useState(true)
+
+  useEffect(() => {
+    const fetchDashboardData = async () => {
+      try {
+        const response = await fetch("/api/dashboard/summary")
+        const jsonData = await response.json()
+        setData(jsonData)
+      } catch (error) {
+        console.error("Failed to fetch dashboard data:", error)
+      } finally {
+        setLoading(false)
+      }
+    }
+
+    fetchDashboardData()
+  }, [])
+
   return (
     <div className="space-y-8">
       <div className="text-center max-w-3xl mx-auto py-10">

@@ -6,81 +6,81 @@ import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table"
 import { Badge } from "@/components/ui/badge"
-import { CalendarIcon, Download, Filter, Search } from "lucide-react"
+import { CalendarIcon, Download, Filter, Search, Eye } from "lucide-react"
 import { format } from "date-fns"
 import { Calendar } from "@/components/ui/calendar"
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover"
 import { Select, SelectContent, SelectItem, SelectTrigger } from "@/components/ui/select"
-import { fetchSalesHistory } from "@/lib/api"
+import { BillDetailsCard } from "@/components/bill-details-card"
 
-// Fallback data in case API fails
-const fallbackSales = [
-  {
-    id: 1,
-    billId: "BILL001",
-    clientName: "Priya Sharma",
-    clientPhone: "9876543210",
-    date: "2023-04-15",
-    items: 3,
-    total: 42500,
-    paymentMethod: "cash",
-  },
-  {
-    id: 2,
-    billId: "BILL002",
-    clientName: "Rahul Patel",
-    clientPhone: "8765432109",
-    date: "2023-04-14",
-    items: 1,
-    total: 18950,
-    paymentMethod: "card",
-  },
-  {
-    id: 3,
-    billId: "BILL003",
-    clientName: "Ananya Singh",
-    clientPhone: "7654321098",
-    date: "2023-04-13",
-    items: 4,
-    total: 56200,
-    paymentMethod: "upi",
-  },
-]
+interface Sale {
+  billId: string
+  date: string
+  clientName: string
+  clientPhone: string
+  items: number
+  total: number
+  paymentMethod: string
+  billItems: {
+    ornamentId: string
+    type: string
+    weight: number
+    purity: string
+    sellingPrice: number
+  }[]
+}
 
 export default function SalesPage() {
   const [searchTerm, setSearchTerm] = useState("")
   const [date, setDate] = useState<Date | undefined>(undefined)
   const [paymentFilter, setPaymentFilter] = useState("all")
-  const [salesData, setSalesData] = useState(fallbackSales)
+  const [salesData, setSalesData] = useState<Sale[]>([])
   const [loading, setLoading] = useState(true)
+  const [selectedBill, setSelectedBill] = useState<Sale | null>(null)
+  const [showBillDetails, setShowBillDetails] = useState(false)
 
   useEffect(() => {
     const loadSalesData = async () => {
       try {
-        const data = await fetchSalesHistory({
-          date: date ? format(date, "yyyy-MM-dd") : undefined,
-          paymentMethod: paymentFilter !== "all" ? paymentFilter : undefined,
-          search: searchTerm || undefined,
-        })
-
-        if (data && data.length > 0) {
-          setSalesData(data)
+        setLoading(true)
+        const response = await fetch("/api/sales")
+        if (!response.ok) {
+          throw new Error("Failed to fetch sales data")
         }
-        setLoading(false)
+        const data = await response.json()
+        setSalesData(data)
       } catch (error) {
-        console.error("Failed to load sales data:", error)
+        console.error("Error loading sales data:", error)
+      } finally {
         setLoading(false)
       }
     }
 
     loadSalesData()
-  }, [date, paymentFilter, searchTerm])
+  }, [])
+
+  // Filter sales data based on search term and filters
+  const filteredSales = salesData.filter((sale) => {
+    const matchesSearch = searchTerm
+      ? sale.clientName.toLowerCase().includes(searchTerm.toLowerCase()) ||
+        sale.clientPhone.includes(searchTerm) ||
+        sale.billId.toLowerCase().includes(searchTerm.toLowerCase())
+      : true
+
+    const matchesDate = date
+      ? sale.date === format(date, "MM/dd/yyyy")
+      : true
+
+    const matchesPayment = paymentFilter === "all" || sale.paymentMethod === paymentFilter
+
+    return matchesSearch && matchesDate && matchesPayment
+  })
 
   // Calculate total sales
-  const totalSales = salesData.reduce((sum, sale) => sum + sale.total, 0)
+  const totalSales = filteredSales.reduce((sum, sale) => sum + sale.total, 0)
 
   // Calculate total items sold
-  const totalItems = salesData.reduce((sum, sale) => sum + sale.items, 0)
+  const totalItems = filteredSales.reduce((sum, sale) => sum + sale.items, 0)
 
   return (
     <div>
@@ -107,7 +107,7 @@ export default function SalesPage() {
             <CardTitle className="text-sm font-medium">Bills Generated</CardTitle>
           </CardHeader>
           <CardContent>
-            <div className="text-2xl font-bold">{salesData.length}</div>
+            <div className="text-2xl font-bold">{filteredSales.length}</div>
             <p className="text-xs text-muted-foreground">For selected period</p>
           </CardContent>
         </Card>
@@ -182,7 +182,7 @@ export default function SalesPage() {
       <Card>
         <CardHeader>
           <CardTitle>Sales Records</CardTitle>
-          <CardDescription>{loading ? "Loading..." : `Showing ${salesData.length} records`}</CardDescription>
+          <CardDescription>{loading ? "Loading..." : `Showing ${filteredSales.length} records`}</CardDescription>
         </CardHeader>
         <CardContent>
           <Table>
@@ -194,50 +194,52 @@ export default function SalesPage() {
                 <TableHead>Items</TableHead>
                 <TableHead>Payment Method</TableHead>
                 <TableHead className="text-right">Total (₹)</TableHead>
+                <TableHead className="w-[50px]">View</TableHead>
               </TableRow>
             </TableHeader>
             <TableBody>
               {loading ? (
                 <TableRow>
-                  <TableCell colSpan={6} className="text-center py-6">
+                  <TableCell colSpan={7} className="text-center py-6">
                     Loading sales data...
                   </TableCell>
                 </TableRow>
-              ) : salesData.length === 0 ? (
+              ) : filteredSales.length === 0 ? (
                 <TableRow>
-                  <TableCell colSpan={6} className="text-center text-muted-foreground py-6">
-                    No sales records found matching your filters.
+                  <TableCell colSpan={7} className="text-center py-6">
+                    No sales records found
                   </TableCell>
                 </TableRow>
               ) : (
-                salesData.map((sale) => (
-                  <TableRow key={sale.id}>
+                filteredSales.map((sale) => (
+                  <TableRow key={sale.billId}>
                     <TableCell className="font-medium">{sale.billId}</TableCell>
                     <TableCell>{sale.date}</TableCell>
                     <TableCell>
                       <div>
-                        <p>{sale.clientName}</p>
-                        <p className="text-xs text-muted-foreground">{sale.clientPhone}</p>
+                        <p className="font-medium">{sale.clientName}</p>
+                        <p className="text-sm text-muted-foreground">{sale.clientPhone}</p>
                       </div>
                     </TableCell>
                     <TableCell>{sale.items}</TableCell>
                     <TableCell>
-                      <Badge
-                        variant="outline"
-                        className={
-                          sale.paymentMethod === "cash"
-                            ? "bg-green-100 text-green-800"
-                            : sale.paymentMethod === "card"
-                              ? "bg-blue-100 text-blue-800"
-                              : sale.paymentMethod === "upi"
-                                ? "bg-purple-100 text-purple-800"
-                                : "bg-gray-100 text-gray-800"
-                        }
-                      >
-                        {sale.paymentMethod.charAt(0).toUpperCase() + sale.paymentMethod.slice(1)}
+                      <Badge variant="outline">
+                        {sale.paymentMethod.toUpperCase()}
                       </Badge>
                     </TableCell>
                     <TableCell className="text-right">₹{sale.total.toLocaleString()}</TableCell>
+                    <TableCell>
+                      <Button
+                        variant="ghost"
+                        size="icon"
+                        onClick={() => {
+                          setSelectedBill(sale)
+                          setShowBillDetails(true)
+                        }}
+                      >
+                        <Eye className="h-4 w-4" />
+                      </Button>
+                    </TableCell>
                   </TableRow>
                 ))
               )}
@@ -245,6 +247,20 @@ export default function SalesPage() {
           </Table>
         </CardContent>
       </Card>
+
+      {/* Bill Details Card */}
+      {selectedBill && (
+        <BillDetailsCard
+          isOpen={showBillDetails}
+          onClose={() => {
+            setShowBillDetails(false)
+            setSelectedBill(null)
+          }}
+          billItems={selectedBill.billItems}
+          billNumber={selectedBill.billId}
+          totalAmount={selectedBill.total}
+        />
+      )}
     </div>
   )
 }

@@ -155,7 +155,7 @@ export default function MerchantsPage() {
                 </TableRow>
               ) : (
                 merchants.map((merchant) => (
-                  <TableRow key={merchant.id}>
+                  <TableRow key={merchant.merchantCode}>
                     <TableCell className="font-medium">{merchant.name}</TableCell>
                     <TableCell>{merchant.merchantCode}</TableCell>
                     <TableCell>{merchant.phone}</TableCell>
@@ -163,7 +163,7 @@ export default function MerchantsPage() {
                     <TableCell>₹{merchant.totalValue.toLocaleString()}</TableCell>
                     <TableCell className="text-right">
                       <Button variant="ghost" size="sm" asChild>
-                        <Link href={`/merchants/${merchant.id}`}>
+                        <Link href={`/merchants/${merchant.merchantCode}`}>
                           <Eye className="h-4 w-4 mr-1" />
                           View
                         </Link>

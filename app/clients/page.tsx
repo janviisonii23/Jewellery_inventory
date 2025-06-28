@@ -5,7 +5,8 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table"
-import { Search, UserPlus, Eye } from "lucide-react"
+import { Badge } from "@/components/ui/badge"
+import { Search, UserPlus } from "lucide-react"
 import {
   Dialog,
   DialogContent,
@@ -19,28 +20,57 @@ import { fetchClients, addClient } from "@/lib/api"
 import Link from "next/link"
 import { useToast } from "@/components/ui/use-toast"
 
+interface Client {
+  id: number;
+  name: string;
+  phone: string;
+  email: string | null;
+  totalPurchases: number;
+  totalSpent: number;
+  lastPurchase: string;
+  purchases: {
+    billId: string;
+    date: string;
+    items: number;
+    amount: number;
+    paymentMethod: string;
+  }[];
+}
+
 export default function ClientsPage() {
   const [searchTerm, setSearchTerm] = useState("")
   const [showAddClientDialog, setShowAddClientDialog] = useState(false)
   const [newClient, setNewClient] = useState({ name: "", phone: "", email: "" })
-  const [clients, setClients] = useState<any[]>([])
+  const [clients, setClients] = useState<Client[]>([])
   const [loading, setLoading] = useState(true)
   const { toast } = useToast()
 
   useEffect(() => {
     const loadClients = async () => {
       try {
-        const data = await fetchClients(searchTerm)
+        setLoading(true)
+        const response = await fetch("/api/clients")
+        if (!response.ok) {
+          throw new Error("Failed to fetch clients")
+        }
+        const data = await response.json()
         setClients(data)
-        setLoading(false)
       } catch (error) {
-        console.error("Failed to load clients:", error)
+        console.error("Error loading clients:", error)
+      } finally {
         setLoading(false)
       }
     }
 
     loadClients()
-  }, [searchTerm])
+  }, [])
+
+  // Filter clients based on search term
+  const filteredClients = clients.filter((client) =>
+    client.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
+    client.phone.includes(searchTerm) ||
+    (client.email && client.email.toLowerCase().includes(searchTerm.toLowerCase()))
+  )
 
   // Handle adding a new client
   const handleAddClient = async () => {
@@ -71,6 +101,7 @@ export default function ClientsPage() {
             totalPurchases: 0,
             totalSpent: 0,
             lastPurchase: "-",
+            purchases: [],
           },
         ])
 
@@ -126,7 +157,7 @@ export default function ClientsPage() {
       <Card>
         <CardHeader>
           <CardTitle>Client List</CardTitle>
-          <CardDescription>{loading ? "Loading..." : `Showing ${clients.length} clients`}</CardDescription>
+          <CardDescription>{loading ? "Loading..." : `Showing ${filteredClients.length} clients`}</CardDescription>
         </CardHeader>
         <CardContent>
           <Table>
@@ -147,20 +178,22 @@ export default function ClientsPage() {
                     Loading clients...
                   </TableCell>
                 </TableRow>
-              ) : clients.length === 0 ? (
+              ) : filteredClients.length === 0 ? (
                 <TableRow>
-                  <TableCell colSpan={6} className="text-center text-muted-foreground py-6">
-                    No clients found matching your search.
+                  <TableCell colSpan={6} className="text-center py-6">
+                    No clients found
                   </TableCell>
                 </TableRow>
               ) : (
-                clients.map((client) => (
+                filteredClients.map((client) => (
                   <TableRow key={client.id}>
                     <TableCell className="font-medium">{client.name}</TableCell>
                     <TableCell>
                       <div>
                         <p>{client.phone}</p>
-                        <p className="text-xs text-muted-foreground">{client.email}</p>
+                        {client.email && (
+                          <p className="text-sm text-muted-foreground">{client.email}</p>
+                        )}
                       </div>
                     </TableCell>
                     <TableCell>{client.totalPurchases}</TableCell>
@@ -168,10 +201,7 @@ export default function ClientsPage() {
                     <TableCell>{client.lastPurchase}</TableCell>
                     <TableCell className="text-right">
                       <Button variant="ghost" size="sm" asChild>
-                        <Link href={`/clients/${client.id}`}>
-                          <Eye className="h-4 w-4 mr-1" />
-                          View
-                        </Link>
+                        <Link href={`/clients/${client.id}`}>View Details</Link>
                       </Button>
                     </TableCell>
                   </TableRow>

@@ -3,7 +3,18 @@
 import { useState } from "react";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { useForm } from "react-hook-form";
+import { Plus } from "lucide-react";
 import { z } from "zod";
+import {
+  Dialog,
+  DialogTrigger,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+  DialogDescription,
+  DialogFooter,
+} from "@/components/ui/dialog";
+
 import {
   Card,
   CardContent,
@@ -36,6 +47,24 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { useToast } from "@/components/ui/use-toast";
 import { addOrnament } from "@/lib/api";
 import { QRCodeSVG } from "qrcode.react";
+import { fetchMerchants, addMerchant } from "@/lib/api";
+import { useEffect } from "react";
+import {
+  Command,
+  CommandEmpty,
+  CommandGroup,
+  CommandInput,
+  CommandItem,
+  CommandList,
+  CommandSeparator,
+} from "@/components/ui/command";
+import {
+  Popover,
+  PopoverContent,
+  PopoverTrigger,
+} from "@/components/ui/popover";
+import { Check, ChevronsUpDown } from "lucide-react";
+import { cn } from "@/lib/utils";
 
 const formSchema = z.object({
   type: z.string({
@@ -59,6 +88,14 @@ export type OrnamentFormData = z.infer<typeof formSchema>;
 export default function AddOrnamentPage() {
   const [qrCode, setQrCode] = useState<string | null>(null);
   const [activeTab, setActiveTab] = useState("manual");
+  const [merchants, setMerchants] = useState<any[]>([]);
+  const [showAddMerchantDialog, setShowAddMerchantDialog] = useState(false);
+  const [newMerchant, setNewMerchant] = useState({
+    name: "",
+    merchantCode: "",
+    phone: "",
+  });
+  const [open, setOpen] = useState(false);
   const { toast } = useToast();
 
   const form = useForm<z.infer<typeof formSchema>>({
@@ -71,6 +108,24 @@ export default function AddOrnamentPage() {
       purity: "",
     },
   });
+
+  useEffect(() => {
+    const loadMerchants = async () => {
+      try {
+        const data = await fetchMerchants();
+        setMerchants(data);
+      } catch (error) {
+        console.error("Failed to load merchants:", error);
+        toast({
+          title: "Error loading merchants",
+          description: "Failed to load merchant list. Please try again.",
+          variant: "destructive",
+        });
+      }
+    };
+
+    loadMerchants();
+  }, [toast]);
 
   async function onSubmit(values: z.infer<typeof formSchema>) {
     try {
@@ -106,6 +161,128 @@ export default function AddOrnamentPage() {
       });
     }
   }
+
+  const handleAddMerchant = async () => {
+    try {
+      if (
+        !newMerchant.name ||
+        !newMerchant.merchantCode ||
+        !newMerchant.phone
+      ) {
+        toast({
+          title: "Missing information",
+          description: "Name, merchant code, and phone are required",
+          variant: "destructive",
+        });
+        return;
+      }
+
+      // Check if merchant code already exists in local dropdown
+      if (
+        merchants.some(
+          (m) =>
+            m.merchantCode.toLowerCase() ===
+            newMerchant.merchantCode.toLowerCase()
+        )
+      ) {
+        toast({
+          title: "Merchant code already exists",
+          description: "Please use a different merchant code",
+          variant: "destructive",
+        });
+        return;
+      }
+
+      // 📨 Send to backend
+      const response = await addMerchant(newMerchant); // make sure you imported this
+
+      toast({
+        title: "Merchant added successfully",
+        description: `${response.name} was added to the merchant list`,
+      });
+
+      // 🆕 Add to dropdown & select it
+      setMerchants((prev) => [...prev, response]);
+      form.setValue("merchantCode", response.merchantCode);
+
+      // Reset form & close input
+      setNewMerchant({ name: "", merchantCode: "", phone: "" });
+      setShowAddMerchantDialog(false);
+    } catch (error: any) {
+      console.error("Add merchant error:", error);
+      toast({
+        title: "Error adding merchant",
+        description: error?.message || "Something went wrong",
+        variant: "destructive",
+      });
+    }
+  };
+
+  // const handleAddMerchant = async () => {
+  //   try {
+  //     if (!newMerchant.name || !newMerchant.merchantCode) {
+  //       toast({
+  //         title: "Missing information",
+  //         description: "Name and merchant code are required",
+  //         variant: "destructive",
+  //       });
+  //       return;
+  //     }
+
+  //     // Check if merchant code already exists
+  //     if (
+  //       merchants.some(
+  //         (m) =>
+  //           m.merchantCode.toLowerCase() ===
+  //           newMerchant.merchantCode.toLowerCase()
+  //       )
+  //     ) {
+  //       toast({
+  //         title: "Merchant code already exists",
+  //         description: "Please use a different merchant code",
+  //         variant: "destructive",
+  //       });
+  //       return;
+  //     }
+
+  //     const response = await addMerchant(newMerchant);
+
+  //     if (response.success) {
+  //       toast({
+  //         title: "Merchant added",
+  //         description: "The merchant has been added successfully",
+  //       });
+
+  //       // Add the new merchant to the list
+  //       const newMerchantWithId = {
+  //         id: response.merchantId,
+  //         ...newMerchant,
+  //       };
+  //       setMerchants([...merchants, newMerchantWithId]);
+
+  //       // Set the merchant code in the form
+  //       form.setValue("merchantCode", newMerchant.merchantCode);
+
+  //       // Reset form and close dialog
+  //       setNewMerchant({ name: "", merchantCode: "", phone: "" });
+  //       setShowAddMerchantDialog(false);
+  //     } else {
+  //       toast({
+  //         title: "Error adding merchant",
+  //         description: response.error || "An unknown error occurred",
+  //         variant: "destructive",
+  //       });
+  //     }
+  //   } catch (error) {
+  //     console.error("Error adding merchant:", error);
+  //     toast({
+  //       title: "Error adding merchant",
+  //       description:
+  //         "There was a problem adding the merchant. Please try again.",
+  //       variant: "destructive",
+  //     });
+  //   }
+  // };
 
   return (
     <div className="max-w-4xl mx-auto">
@@ -197,10 +374,78 @@ export default function AddOrnamentPage() {
                         <FormItem>
                           <FormLabel>Merchant Code</FormLabel>
                           <FormControl>
-                            <Input placeholder="MER001" {...field} />
+                            <Popover open={open} onOpenChange={setOpen}>
+                              <PopoverTrigger asChild>
+                                <FormControl>
+                                  <Button
+                                    variant="outline"
+                                    role="combobox"
+                                    aria-expanded={open}
+                                    className="w-full justify-between font-normal"
+                                  >
+                                    {field.value
+                                      ? merchants.find(
+                                          (merchant) =>
+                                            merchant.merchantCode ===
+                                            field.value
+                                        )?.merchantCode || field.value
+                                      : "Select merchant"}
+                                    <ChevronsUpDown className="ml-2 h-4 w-4 shrink-0 opacity-50" />
+                                  </Button>
+                                </FormControl>
+                              </PopoverTrigger>
+                              <PopoverContent className="w-[300px] p-0">
+                                <Command>
+                                  <CommandInput placeholder="Search merchants..." />
+                                  <CommandList>
+                                    <CommandEmpty>
+                                      No merchant found.
+                                    </CommandEmpty>
+                                    <CommandGroup heading="Existing Merchants">
+                                      {merchants.map((merchant) => (
+                                        <CommandItem
+                                          key={merchant.id}
+                                          value={merchant.merchantCode}
+                                          onSelect={() => {
+                                            form.setValue(
+                                              "merchantCode",
+                                              merchant.merchantCode
+                                            );
+                                            setOpen(false);
+                                          }}
+                                        >
+                                          <Check
+                                            className={cn(
+                                              "mr-2 h-4 w-4",
+                                              field.value ===
+                                                merchant.merchantCode
+                                                ? "opacity-100"
+                                                : "opacity-0"
+                                            )}
+                                          />
+                                          {merchant.merchantCode} - {merchant.name}
+                                        </CommandItem>
+                                      ))}
+                                    </CommandGroup>
+                                    <CommandSeparator />
+                                    <CommandGroup>
+                                      <CommandItem
+                                        onSelect={() => {
+                                          setShowAddMerchantDialog(true);
+                                          setOpen(false);
+                                        }}
+                                      >
+                                        <Plus className="mr-2 h-4 w-4" />
+                                        Add New Merchant
+                                      </CommandItem>
+                                    </CommandGroup>
+                                  </CommandList>
+                                </Command>
+                              </PopoverContent>
+                            </Popover>
                           </FormControl>
                           <FormDescription>
-                            Enter the unique code for the merchant
+                            Select a merchant or add a new one
                           </FormDescription>
                           <FormMessage />
                         </FormItem>
@@ -275,6 +520,71 @@ export default function AddOrnamentPage() {
             </Card>
           </div>
         </TabsContent>
+
+        {/* Add Merchant Dialog */}
+        <Dialog
+          open={showAddMerchantDialog}
+          onOpenChange={setShowAddMerchantDialog}
+        >
+          <DialogContent>
+            <DialogHeader>
+              <DialogTitle>Add New Merchant</DialogTitle>
+              <DialogDescription>
+                Enter merchant details to add them to your system
+              </DialogDescription>
+            </DialogHeader>
+            <div className="space-y-4 py-2">
+              <div>
+                <Label htmlFor="merchant-name">Name *</Label>
+                <Input
+                  id="merchant-name"
+                  value={newMerchant.name}
+                  onChange={(e) =>
+                    setNewMerchant({ ...newMerchant, name: e.target.value })
+                  }
+                  placeholder="Enter merchant name"
+                  className="mt-1"
+                />
+              </div>
+              <div>
+                <Label htmlFor="merchant-code">Merchant Code *</Label>
+                <Input
+                  id="merchant-code"
+                  value={newMerchant.merchantCode}
+                  onChange={(e) =>
+                    setNewMerchant({
+                      ...newMerchant,
+                      merchantCode: e.target.value,
+                    })
+                  }
+                  placeholder="Enter unique merchant code (e.g., MER001)"
+                  className="mt-1"
+                />
+              </div>
+              <div>
+                <Label htmlFor="merchant-phone">Phone Number</Label>
+                <Input
+                  id="merchant-phone"
+                  value={newMerchant.phone}
+                  onChange={(e) =>
+                    setNewMerchant({ ...newMerchant, phone: e.target.value })
+                  }
+                  placeholder="Enter phone number"
+                  className="mt-1"
+                />
+              </div>
+            </div>
+            <DialogFooter>
+              <Button
+                variant="outline"
+                onClick={() => setShowAddMerchantDialog(false)}
+              >
+                Cancel
+              </Button>
+              <Button onClick={handleAddMerchant}>Add Merchant</Button>
+            </DialogFooter>
+          </DialogContent>
+        </Dialog>
 
         <TabsContent value="bulk">
           <Card>
